@@ -1,8 +1,8 @@
 __all__ = ['Collection', 'CollectionError', 'CollectionUnexpectedError']
 
-from utils import error as errorutils
+from utils import errorutils
 from model import Model
-from backends import DefaultBackend
+from backends.default import DefaultBackend
 
 
 class CollectionError(errorutils.UnexpectedError):
@@ -35,8 +35,10 @@ class Collection(object):
     backend = None
 
 
-    def configure(self, backend=DefaultBackend, *args, **kwargs):
-        self.backend = backend(*args, **kwargs)
+    def setBackend(self, backend=None, **kwargs):
+        kwargs.update(colName=self.__class__.__name__)
+        backend = DefaultBackend() if backend == None else backend(**kwargs)
+        self.backend = backend
 
 
     def toModel(self, modelOrId):
@@ -185,40 +187,40 @@ class Collection(object):
     # Backend functions to implement -----------------------
 
     def _check_backend(self):
-        if not self.hasattr('backend') or not self.backend:
+        if not hasattr(self, 'backend') or self.backend == None:
             raise CollectionError("backend not configured")
 
 
     def _do_makeId(self, model):
         self._check_backend()
-        return self.backend.make_Id(self, model)
+        return self.backend.make_Id(model)
 
     def _do_add(self, model):
         self._check_backend()
-        return self.backend.add(self, model)
+        return self.backend.add(model)
 
     def _do_saveModel(self, model):
         self._check_backend()
-        return self.backend.saveModel(self, model)
+        return self.backend.saveModel(model)
 
     def _do_delete(self, model):
         self._check_backend()
-        return self.backend.delete(self, model)
+        return self.backend.delete(model)
 
     def _do_getItem(self, modelId):
         self._check_backend()
-        return self.backend.getItem(self, modelId)
+        return self.backend.getItem(modelId)
 
     def _do_iter(self):
         self._check_backend()
-        return self.backend.iter(self)
+        return self.backend.iter()
 
     def _do_find(self, query):
         self._check_backend()
-        return self.backend.find(self, query)
+        return self.backend.find(query)
 
     def __len__(self):
         self._check_backend()
-        return self.backend.len(self)
+        return self.backend.len()
 
 

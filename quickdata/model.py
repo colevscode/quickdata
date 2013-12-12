@@ -3,8 +3,8 @@ __all__ = ['Model', 'ModelUnexpectedError']
 from copy import copy
 import inspect
 
-from utils import error as errorutils
-from utils import time as timeutils
+from utils import errorutils
+from utils import timeutils
 
 ## ERRORS ---------------------------------------------------------------------
 

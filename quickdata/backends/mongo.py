@@ -1,20 +1,24 @@
-__all__ = ['MongoBackend']
+__all__ = ['MongoBackend', 'CachedMongoBackend']
 
 import string
 
 from copy import copy
-from utils import rand as randutils
+from ..utils import randutils
+from ..utils.cacheutils import memoize_with_expiry
 
+from base import BaseBackend
 
-class MongoBackend(object):
+class MongoBackend(BaseBackend):
     '''
     Implements a collection using a mongo database backend. 
     '''
 
     idField = '_id'
 
-    def __init__(self, mongo=None, host="localhost:27017", user="", passwd="", 
-                 dbName="collections", colPrefix=""):
+    def __init__(self, colName, 
+                 mongo=None, host="localhost:27017", 
+                 user="", passwd="", dbName="collections"):
+
         from pymongo import MongoClient
         if not mongo:
             auth = '%s:%s@' % (user, passwd) if user else ''
@@ -23,13 +27,13 @@ class MongoBackend(object):
         else:
             self.mongo = mongo
         self.dbName = dbName
-        self.colName = colPrefix + self.__class__.__name__
+        super(MongoBackend, self).__init__(colName)
         return self # for chaining
 
 
     # Backend functions -----------------------
 
-    def _do_makeId(self, model):
+    def makeId(self, model):
         '''
         Creates a random uuid for an Id.
         '''
@@ -37,7 +41,7 @@ class MongoBackend(object):
                                                 string.digits))
 
 
-    def _do_add(self, model):
+    def add(self, model):
         '''
         Adds a model to this collection and the database. Relies on the 
         super class' save functionality to assign an id.
@@ -45,41 +49,41 @@ class MongoBackend(object):
         return model.save()
 
 
-    def _do_saveModel(self, model):
-        if 'id' in model and self.idField != 'id':
+    def saveModel(self, model):
+        if model and 'id' in model and self.idField != 'id':
             model = copy(model)
             idval = model.pop('id')
             model[self.idField] = idval
         return self.mongo[self.dbName][self.colName].save(model)
 
 
-    def _do_getItem(self, modelId):
+    def getItem(self, modelId):
         '''
         obviously this is quite inefficient. Later I should implement a simple
         cache to keep these accesses from hitting the db each time
         '''
         model = self.mongo[self.dbName][self.colName].find_one(modelId)
-        if self.idField in model and self.idField != 'id':
+        if model and self.idField in model and self.idField != 'id':
             model = copy(model)
             idval = model.pop(self.idField)
             model['id'] = idval
         return model
 
 
-    def _do_delete(self, model):
+    def delete(self, model):
         return self.mongo[self.dbName][self.colName].remove(model.id)
 
 
-    def __len__(self):
+    def len(self):
         return self.mongo[self.dbName][self.colName].count()
 
 
-    def _do_iter(self):
+    def iter(self):
         for data in self.mongo[self.dbName][self.colName].find():
             yield data
 
 
-    def _do_find(self, query, limit=None):
+    def find(self, query, limit=None):
         if 'id' in query and self.idField != 'id':
             query = copy(query)
             query[self.idField] = query['id']
@@ -93,35 +97,13 @@ class MongoBackend(object):
 
 
 class CachedMongoBackend(MongoBackend):
+    '''
+    Implements a collection using a mongo database backend. 
+    '''
+    cache = {}
 
-    def __init__(self, *args, **kwargs):
-        self.cachettl = kwargs.pop('cachettl', 300)
-        super(CachedMongoBackend, self).__init__(self, *args, **kwargs)
-
-
-    def _do_saveModel(self, model):
-        
-        
-        if 'id' in model and self.idField != 'id':
-            model = copy(model)
-            idval = model.pop('id')
-            model[self.idField] = idval
-        return self.mongo[self.dbName][self.colName].save(model)
-
-
-    def _do_getItem(self, modelId):
-        '''
-        obviously this is quite inefficient. Later I should implement a simple
-        cache to keep these accesses from hitting the db each time
-        '''
-        model = self.mongo[self.dbName][self.colName].find_one(modelId)
-        if self.idField in model and self.idField != 'id':
-            model = copy(model)
-            idval = model.pop(self.idField)
-            model['id'] = idval
-        return model
-
-
-    def _do_delete(self, model):
-        return self.mongo[self.dbName][self.colName].remove(model.id)
+    def __init__(self, cachettl=300, **kwargs):
+        super(CachedMongoBackend, self).__init__(**kwargs)
+        wrapper = memoize_with_expiry(self.cache, expiry_time=cachettl)
+        self.getItem = wrapper(self.getItem)
 
