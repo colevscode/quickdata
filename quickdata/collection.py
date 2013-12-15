@@ -2,7 +2,7 @@ __all__ = ['Collection', 'CollectionError', 'CollectionUnexpectedError']
 
 from utils import errorutils
 from model import Model
-from backends.default import DefaultBackend
+from backends.base import BaseBackend
 
 
 class CollectionError(errorutils.UnexpectedError):
@@ -37,7 +37,7 @@ class Collection(object):
 
     def setBackend(self, backend=None, **kwargs):
         kwargs.update(colName=self.__class__.__name__)
-        backend = DefaultBackend() if backend == None else backend(**kwargs)
+        backend = BaseBackend() if backend == None else backend(**kwargs)
         self.backend = backend
 
 
