@@ -22,7 +22,7 @@ class MongoBackend(BaseBackend):
         from pymongo import MongoClient
         if not mongo:
             auth = '%s:%s@' % (user, passwd) if user else ''
-            uri  = 'mongodb://' + auth + host
+            uri  = 'mongodb://' + auth + host + "/" + dbName
             self.mongo = MongoClient(host=uri)
         else:
             self.mongo = mongo
