@@ -28,7 +28,6 @@ class MongoBackend(BaseBackend):
             self.mongo = mongo
         self.dbName = dbName
         super(MongoBackend, self).__init__(colName)
-        return self # for chaining
 
 
     # Backend functions -----------------------
