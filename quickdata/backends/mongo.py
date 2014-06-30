@@ -15,6 +15,23 @@ class MongoBackend(BaseBackend):
 
     idField = '_id'
 
+
+    def _id2idfield(self, data):
+        if data and 'id' in data and self.idField != 'id':
+            data = copy(data)
+            idval = data.pop('id')
+            data[self.idField] = idval
+        return data
+
+
+    def _idfield2id(self, data):
+        if data and self.idField in data and self.idField != 'id':
+            data = copy(data)
+            idval = data.pop(self.idField)
+            data['id'] = idval
+        return data
+
+
     def __init__(self, colName, 
                  mongo=None, host="localhost:27017", 
                  user="", passwd="", dbName="collections"):
@@ -49,10 +66,7 @@ class MongoBackend(BaseBackend):
 
 
     def saveModel(self, model):
-        if model and 'id' in model and self.idField != 'id':
-            model = copy(model)
-            idval = model.pop('id')
-            model[self.idField] = idval
+        model = self._id2idfield(model)
         return self.mongo[self.dbName][self.colName].save(model)
 
 
@@ -62,10 +76,7 @@ class MongoBackend(BaseBackend):
         cache to keep these accesses from hitting the db each time
         '''
         model = self.mongo[self.dbName][self.colName].find_one(modelId)
-        if model and self.idField in model and self.idField != 'id':
-            model = copy(model)
-            idval = model.pop(self.idField)
-            model['id'] = idval
+        model = self._idfield2id(model)
         return model
 
 
@@ -83,15 +94,12 @@ class MongoBackend(BaseBackend):
 
 
     def find(self, query, limit=None):
-        if 'id' in query and self.idField != 'id':
-            query = copy(query)
-            query[self.idField] = query['id']
-            del query['id']
-
+        query = self._id2idfield(query)
         cursor = self.mongo[self.dbName][self.colName].find(query)
         if limit:
             cursor.limit(limit)
         for data in cursor:
+            data = self._idfield2id(data)
             yield data
 
 
